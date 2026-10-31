@@ -1,4 +1,5 @@
-﻿using NUnit.Framework;
+﻿using System.Collections.Generic;
+using NUnit.Framework;
 using YARG.Core.Chart;
 using YARG.Core.Engine;
 using YARG.Core.Engine.Vocals;
@@ -75,6 +76,36 @@ public sealed class VocalsEngineTests
 
         Assert.That(hits, Is.EqualTo(10_000));
         Assert.That(allocated, Is.EqualTo(0));
+    }
+
+    [TestCase(60.0)]
+    [TestCase(10.0)]
+    [TestCase(1.0)]
+    public void Bot_HitsEveryPhrase_RegardlessOfTheUpdateRate(double updatesPerSecond)
+    {
+        const int PhraseCount = 5;
+        var phrases = new List<VocalNote>();
+        for (int i = 0; i < PhraseCount; i++)
+        {
+            // 120 BPM at resolution 480 is 960 ticks per second
+            double start = i * 4.0;
+            uint startTick = (uint) (i * 4 * 960);
+            var phrase = new VocalNote(NoteFlags.None, false, start, 2.0, startTick, 1920);
+            phrase.AddChildNote(new VocalNote(60, 0, VocalNoteType.Lyric, start, 1.5, startTick, 1440));
+            phrases.Add(phrase);
+        }
+
+        var chart = new InstrumentDifficulty<VocalNote>(Instrument.Vocals, Difficulty.Expert, phrases, new(), new());
+        var sync = new SyncTrack(480);
+        sync.Tempos.Add(new TempoChange(120, 0.0, 0));
+        var engine = new YargVocalsEngine(chart, sync, EngineParameters, true);
+
+        for (double time = 0; time <= PhraseCount * 4.0 + 1; time += 1.0 / updatesPerSecond)
+        {
+            engine.Update(time);
+        }
+
+        Assert.That(engine.EngineStats.NotesHit, Is.EqualTo(PhraseCount));
     }
 
     private static TestVocalsEngine CreateEngine(out VocalNote phrase, out VocalNote firstLyric,
