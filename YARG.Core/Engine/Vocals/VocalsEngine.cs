@@ -118,7 +118,7 @@ namespace YARG.Core.Engine.Vocals
             {
                 double timeForFrame = 1.0 / EngineParameters.ApproximateVocalFps;
                 int nextUpdateIndex = (int) Math.Floor(previousTime / timeForFrame) + 1;
-                double nextUpdateTime = nextUpdateIndex * EngineParameters.ApproximateVocalFps;
+                double nextUpdateTime = nextUpdateIndex * timeForFrame;
 
                 for (double time = nextUpdateTime; time < nextTime; time += timeForFrame)
                 {
