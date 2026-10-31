@@ -6,7 +6,7 @@ using Newtonsoft.Json.Linq;
 namespace YARG.Core.IO
 {
     /// <summary>
-    /// Single-file container used to export and import the settings and profiles of the web build.
+    /// Single-file container used to export and import the settings, profiles and control bindings of the web build.
     /// </summary>
     public static class ConfigBundle
     {
@@ -17,12 +17,13 @@ namespace YARG.Core.IO
         private const string VERSION_KEY = "version";
         private const string SETTINGS_KEY = "settings";
         private const string PROFILES_KEY = "profiles";
+        private const string BINDINGS_KEY = "bindings";
 
         /// <summary>
         /// Builds a bundle. A part is omitted when its argument is <see langword="null"/>.
         /// The texts must be valid JSON; they are embedded as JSON, not as escaped strings.
         /// </summary>
-        public static string Create(string? settingsJson, string? profilesJson)
+        public static string Create(string? settingsJson, string? profilesJson, string? bindingsJson)
         {
             var root = new JObject
             {
@@ -36,18 +37,23 @@ namespace YARG.Core.IO
             if (profilesJson != null)
             {
                 root[PROFILES_KEY] = ParseToken(profilesJson);
+                }
+                if (bindingsJson != null)
+                {
+                    root[BINDINGS_KEY] = ParseToken(bindingsJson);
             }
             return root.ToString(Formatting.Indented);
         }
 
         /// <summary>
-        /// Reads a bundle. Never throws; on failure both texts are <see langword="null"/> and
+        /// Reads a bundle. Never throws; on failure all texts are <see langword="null"/> and
         /// <paramref name="error"/> describes the problem.
         /// </summary>
-        public static bool TryParse(string bundleJson, out string? settingsJson, out string? profilesJson, out string? error)
+        public static bool TryParse(string bundleJson, out string? settingsJson, out string? profilesJson, out string? bindingsJson, out string? error)
         {
             settingsJson = null;
             profilesJson = null;
+            bindingsJson = null;
             error = null;
 
             try
@@ -72,9 +78,10 @@ namespace YARG.Core.IO
 
                 var settings = root[SETTINGS_KEY];
                 var profiles = root[PROFILES_KEY];
-                if (settings == null && profiles == null)
+                var bindings = root[BINDINGS_KEY];
+                if (settings == null && profiles == null && bindings == null)
                 {
-                    error = "The bundle has neither settings nor profiles.";
+                    error = "The bundle has no settings, profiles or bindings.";
                     return false;
                 }
                 if (settings != null && settings.Type != JTokenType.Object)
@@ -88,14 +95,22 @@ namespace YARG.Core.IO
                     return false;
                 }
 
+                if (bindings != null && bindings.Type != JTokenType.Object)
+                {
+                    error = "The bundle bindings must be a JSON object.";
+                    return false;
+                }
+
                 settingsJson = settings?.ToString(Formatting.Indented);
                 profilesJson = profiles?.ToString(Formatting.Indented);
+                bindingsJson = bindings?.ToString(Formatting.Indented);
                 return true;
             }
             catch (Exception e)
             {
                 settingsJson = null;
                 profilesJson = null;
+                bindingsJson = null;
                 error = $"The bundle is not valid JSON: {e.Message}";
                 return false;
             }
