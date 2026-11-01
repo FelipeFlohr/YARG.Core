@@ -222,6 +222,7 @@ public class PreviewContextTests
         {
             public override void SetEnabled(bool enabled) { }
             public override void SetVolume(double volume) { }
+            public override void UpdateSchedule(IReadOnlyList<double> scheduledPlays) { }
             public override void Dispose() { }
         }
 

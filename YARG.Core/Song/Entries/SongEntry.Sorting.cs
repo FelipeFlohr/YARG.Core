@@ -186,10 +186,11 @@ namespace YARG.Core.Song
             }
         }
 
-        private static readonly unsafe delegate*<SongCache, Dictionary<SongEntry, CacheWriteIndices>, List<string>>[] COLLECTORS =
+        // Delegates rather than function pointers: IL2CPP (WebGL) crashes on a static array of function pointers
+        private static readonly Func<SongCache, Dictionary<SongEntry, CacheWriteIndices>, List<string>>[] COLLECTORS =
         {
-            &CollectCacheTitles, &CollectCacheArtists,  &CollectCacheAlbums,    &CollectCacheGenres, &CollectCacheSubgenres,
-            &CollectCacheYears,  &CollectCacheCharters, &CollectCachePlaylists, &CollectCacheSources,
+            CollectCacheTitles, CollectCacheArtists,  CollectCacheAlbums,    CollectCacheGenres, CollectCacheSubgenres,
+            CollectCacheYears,  CollectCacheCharters, CollectCachePlaylists, CollectCacheSources,
         };
 
         internal static void WriteCategoriesToCache(FileStream filestream, SongCache cache, Dictionary<SongEntry, CacheWriteIndices> nodes)
@@ -205,10 +206,7 @@ namespace YARG.Core.Song
             var categories = new List<string>[CacheReadStrings.NUM_CATEGORIES];
             Parallel.For(0, CacheReadStrings.NUM_CATEGORIES, i =>
             {
-                unsafe
-                {
-                    categories[i] = COLLECTORS[i](cache, nodes);
-                }
+                categories[i] = COLLECTORS[i](cache, nodes);
             });
 
             using MemoryStream ms = new();

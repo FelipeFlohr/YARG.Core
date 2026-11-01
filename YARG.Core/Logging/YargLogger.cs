@@ -28,13 +28,22 @@ namespace YARG.Core.Logging
         {
             _logBuilder = ZString.CreateStringBuilder();
 
+#if !YARG_NO_THREADS
             var logOutputterThread = new Thread(LogOutputter)
             {
                 Name = "YargLogger Thread",
                 IsBackground = true,
             };
             logOutputterThread.Start();
+            HasOutputThread = true;
+#endif
         }
+
+        /// <summary>
+        /// Whether a background thread outputs the log queue. When false (<c>YARG_NO_THREADS</c>),
+        /// the host must call <see cref="FlushLogQueue"/> itself.
+        /// </summary>
+        public static bool HasOutputThread { get; private set; }
 
         /// <summary>
         /// Determines whether the given logging levle is enabled.
