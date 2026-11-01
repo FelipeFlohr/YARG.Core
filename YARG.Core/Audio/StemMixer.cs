@@ -85,6 +85,12 @@ namespace YARG.Core.Audio
     {
         public abstract void SetEnabled(bool enabled);
         public abstract void SetVolume(double volume);
+
+        /// <summary>
+        /// Replaces the scheduled play times (song seconds), keeping the sample already loaded.
+        /// </summary>
+        public abstract void UpdateSchedule(IReadOnlyList<double> scheduledPlays);
+
         public abstract void Dispose();
     }
 
