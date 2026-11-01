@@ -35,8 +35,20 @@ namespace YARG.Core.IO
             return Load(bytes);
         }
 
+        /// <summary>
+        /// Decodes encoded image files (png/jpg) instead of the native STB2CSharp library, for platforms
+        /// where it is not available (the web). Returns null when the data can't be decoded.
+        /// </summary>
+        public static Func<FixedArray<byte>, YARGImage?>? DecoderOverride { get; set; }
+
         public static unsafe YARGImage? Load(FixedArray<byte> file)
         {
+            var decoder = DecoderOverride;
+            if (decoder != null)
+            {
+                return decoder(file);
+            }
+
             var result = LoadNative(file.Ptr, (int) file.Length, out int width, out int height, out int components);
             if (result == null)
             {
@@ -48,6 +60,34 @@ namespace YARG.Core.IO
                 Width = width,
                 Height = height,
                 Format = (ImageFormat) components
+            };
+        }
+
+        /// <summary>
+        /// Wraps already decoded pixels, rows top to bottom like STB2CSharp returns them.
+        /// The image takes ownership of <paramref name="pixels"/>.
+        /// </summary>
+        public static unsafe YARGImage FromPixels(FixedArray<byte> pixels, int width, int height, ImageFormat format)
+        {
+            if (format != ImageFormat.Grayscale && format != ImageFormat.GrayScale_Alpha &&
+                format != ImageFormat.RGB && format != ImageFormat.RGBA)
+            {
+                throw new ArgumentException("Only uncompressed formats can be wrapped", nameof(format));
+            }
+
+            long expected = (long) width * height * (int) format;
+            if (width <= 0 || height <= 0 || pixels.Length < expected)
+            {
+                throw new ArgumentException($"Expected {expected} bytes for a {width}x{height} {format} image", nameof(pixels));
+            }
+
+            return new YARGImage
+            {
+                _handle = pixels.TransferOwnership(),
+                Data = pixels.Ptr,
+                Width = width,
+                Height = height,
+                Format = format
             };
         }
 

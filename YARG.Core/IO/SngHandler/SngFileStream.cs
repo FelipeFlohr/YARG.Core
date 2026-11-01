@@ -12,6 +12,11 @@ namespace YARG.Core.IO
         private const int BUFFER_SIZE = 1024 * 1024;
         private const int SEEK_MODULUS = BUFFER_SIZE - 1;
 
+        /// <summary>
+        /// When false, decryption runs on the calling thread only (platforms without threads, such as the web).
+        /// </summary>
+        public static bool UseParallelDecrypt = true;
+
         private readonly SngTracker _tracker;
         private readonly string _filename;
         private readonly SngFileListing _listing;
@@ -188,14 +193,17 @@ namespace YARG.Core.IO
         public static unsafe void DecryptVectorized(byte* position, SngMask mask, byte* end)
         {
             byte* keyPosition = mask.Ptr;
-            Parallel.For(0, SngMask.NUM_VECTORS, i =>
+            if (UseParallelDecrypt)
             {
-                var xor = *((Vector<byte>*) keyPosition + i);
-                for (var loc = (Vector<byte>*) position + i; loc + 1 <= end; loc += SngMask.NUM_VECTORS)
+                Parallel.For(0, SngMask.NUM_VECTORS, i => DecryptLane(position, keyPosition, end, i));
+            }
+            else
+            {
+                for (int i = 0; i < SngMask.NUM_VECTORS; ++i)
                 {
-                    *loc ^= xor;
+                    DecryptLane(position, keyPosition, end, i);
                 }
-            });
+            }
 
             long numVecs = (end - position) / sizeof(Vector<byte>);
             position += numVecs * sizeof(Vector<byte>);
@@ -204,6 +212,15 @@ namespace YARG.Core.IO
             while (position < end)
             {
                 *position++ ^= *keyPosition++;
+            }
+        }
+
+        private static unsafe void DecryptLane(byte* position, byte* keyPosition, byte* end, int lane)
+        {
+            var xor = *((Vector<byte>*) keyPosition + lane);
+            for (var loc = (Vector<byte>*) position + lane; loc + 1 <= end; loc += SngMask.NUM_VECTORS)
+            {
+                *loc ^= xor;
             }
         }
     }
