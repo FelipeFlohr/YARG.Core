@@ -93,7 +93,7 @@ namespace YARG.Core.IO
 
         public readonly void Dispose()
         {
-            _tracker.Dispose();
+            _tracker?.Dispose();
         }
 
         private static readonly byte[] SNGPKG = { (byte) 'S', (byte) 'N', (byte) 'G', (byte) 'P', (byte) 'K', (byte) 'G' };
@@ -112,6 +112,7 @@ namespace YARG.Core.IO
                 Span<byte> tag = stackalloc byte[SNGPKG.Length];
                 if (filestream.Read(tag) < tag.Length || !tag.SequenceEqual(SNGPKG))
                 {
+                    filestream.Dispose();
                     return default;
                 }
                 tracker.Stream = filestream;
